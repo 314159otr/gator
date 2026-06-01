@@ -34,12 +34,12 @@ func Read() (Config, error) {
 	return config, nil
 }
 
-func (config Config) SetUser(user string) error {
+func (config *Config) SetUser(user string) error {
 	config.CurrentUserName = user
 	return write(config)
 }
 
-func write(config Config) error {
+func write(config *Config) error {
 	path, err := getConfigFilePath()
 	if err != nil {
 		return err
