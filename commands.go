@@ -94,6 +94,17 @@ func handlerUsers(s *state, cmd command) error {
 	return nil
 }
 
+func handlerAgg(s *state, cmd command) error {
+	url :=  "https://www.wagslane.dev/index.xml"
+	ctx := context.Background()
+	rssFeed, err := fetchFeed(ctx, url)
+	if err != nil {
+		return fmt.Errorf("couldnt fetch URL: %v. Error: %w", url,  err)
+	}
+	fmt.Printf("feed: %+v\n", rssFeed)
+	return nil
+}
+
 func printUser(user database.User) {
 	fmt.Printf("ID:        %v\n", user.ID)
 	fmt.Printf("Name:      %v\n", user.Name)
