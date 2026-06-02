@@ -28,7 +28,7 @@ func handlerLogin(s *state, cmd command) error {
 	username := cmd.args[0]
 
 	ctx := context.Background()
-	_, err := s.db.GetUser(ctx, username)	
+	_, err := s.db.GetUser(ctx, username)
 	if errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("user \"%s\" doesnt exist", username)
 	}
@@ -89,7 +89,7 @@ func handlerUsers(s *state, cmd command) error {
 			fmt.Printf("* %s (current)\n", user.Name)
 		} else {
 		fmt.Printf("* %s\n", user.Name)
-		} 
+		}
 	}
 	return nil
 }
@@ -105,11 +105,52 @@ func handlerAgg(s *state, cmd command) error {
 	return nil
 }
 
+func handlerAddFeed(s *state, cmd command) error {
+	if len(cmd.args) < 2 {
+		return errors.New("Usage: addfeed <name> <url>")
+	}
+
+	ctx := context.Background()
+	user, err := s.db.GetUser(ctx, s.cfg.CurrentUserName)
+	if errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("user \"%s\" doesnt exist", s.cfg.CurrentUserName)
+	}
+	if err != nil {
+		return fmt.Errorf("error getting the user: %w", err)
+	}
+
+	name := cmd.args[0]
+	url := cmd.args[1]
+	feedParams := database.CreateFeedParams{
+		ID:        uuid.New(),
+		UserID:    user.ID,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Name:      name,
+		Url:       url,
+	}
+	feed, err := s.db.CreateFeed(ctx, feedParams)
+	if err != nil {
+		return fmt.Errorf("error creating feed [%s - %s]: %w", name, url, err)
+	}
+	fmt.Println("feed was created:")
+	printFeed(feed)
+	return nil
+}
+
 func printUser(user database.User) {
 	fmt.Printf("ID:        %v\n", user.ID)
 	fmt.Printf("Name:      %v\n", user.Name)
 	fmt.Printf("CreatedAt: %v\n", user.CreatedAt)
 	fmt.Printf("UpdatedAt: %v\n", user.UpdatedAt)
+}
+func printFeed(feed database.Feed) {
+	fmt.Printf("ID:        %v\n", feed.ID)
+	fmt.Printf("UserID:    %v\n", feed.UserID)
+	fmt.Printf("Name:      %v\n", feed.Name)
+	fmt.Printf("Url:       %v\n", feed.Url)
+	fmt.Printf("CreatedAt: %v\n", feed.CreatedAt)
+	fmt.Printf("UpdatedAt: %v\n", feed.UpdatedAt)
 }
 
 func (c * commands) run(s *state, cmd command) error {
