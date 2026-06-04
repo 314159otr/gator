@@ -117,19 +117,12 @@ func handlerAgg(s *state, cmd command) error {
 	return nil
 }
 
-func handlerAddFeed(s *state, cmd command) error {
+func handlerAddFeed(s *state, cmd command, user database.User) error {
 	if len(cmd.args) < 2 {
 		return errors.New("Usage: addfeed <name> <url>")
 	}
 
 	ctx := context.Background()
-	user, err := s.db.GetUser(ctx, s.cfg.CurrentUserName)
-	if errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf("user \"%s\" doesnt exist", s.cfg.CurrentUserName)
-	}
-	if err != nil {
-		return fmt.Errorf("error getting the user: %w", err)
-	}
 
 	name := cmd.args[0]
 	url := cmd.args[1]
@@ -188,7 +181,7 @@ func handlerFeeds(s *state, cmd command) error {
 	return nil
 }
 
-func handlerFollow(s *state, cmd command) error {
+func handlerFollow(s *state, cmd command, user database.User) error {
 	if len(cmd.args) != 1 {
 		return errors.New("Usage: follow <url>")
 	}
@@ -196,13 +189,6 @@ func handlerFollow(s *state, cmd command) error {
 
 	ctx := context.Background()
 
-	user, err := s.db.GetUser(ctx, s.cfg.CurrentUserName)
-	if errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf("user \"%s\" doesnt exist", s.cfg.CurrentUserName)
-	}
-	if err != nil {
-		return fmt.Errorf("error getting the user: %w", err)
-	}
 	printUser(user)
 
 	feed, err := s.db.GetFeedByURL(ctx, url)
@@ -229,16 +215,8 @@ func handlerFollow(s *state, cmd command) error {
 	return nil
 }
 
-func handlerFollowing(s *state, cmd command) error {
+func handlerFollowing(s *state, cmd command, user database.User) error {
 	ctx := context.Background()
-	user, err := s.db.GetUser(ctx, s.cfg.CurrentUserName)
-	if errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf("user \"%s\" doesnt exist", s.cfg.CurrentUserName)
-	}
-	if err != nil {
-		return fmt.Errorf("error getting the user: %w", err)
-	}
-
 	feedFollowRows, err := s.db.GetFeedFollowsForUser(ctx, user.ID)
 	if err != nil {
 		return fmt.Errorf("error getting the feeds for %v: %w", user.Name, err)
@@ -248,6 +226,20 @@ func handlerFollowing(s *state, cmd command) error {
 		fmt.Printf("- %s\n", feedFollowRow.FeedName)
 	}
 	return nil
+}
+
+func middlewareLoggedIn(handler func(*state, command, database.User) error) func(*state, command) error {
+	return func(s *state, cmd command) error {
+		ctx := context.Background()
+		user, err := s.db.GetUser(ctx, s.cfg.CurrentUserName)
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("user \"%s\" doesnt exist", s.cfg.CurrentUserName)
+		}
+		if err != nil {
+			return fmt.Errorf("error getting the user: %w", err)
+		}
+		return handler(s, cmd, user)
+	}
 }
 
 func printUser(user database.User) {
