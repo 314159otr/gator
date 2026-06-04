@@ -17,12 +17,11 @@ type state struct {
 }
 
 func main() {
-	cfg, err := config.Read() 
+	cfg, err := config.Read()
 	if err != nil {
 		log.Fatalf("error reading file. Error: %s", err)
 	}
 
-	
 	db, err := sql.Open("postgres", cfg.DbURL)
 	if err != nil {
 		log.Fatalf("error reading file. Error: %s", err)
@@ -43,6 +42,7 @@ func main() {
 	cmds.register("users", handlerUsers)
 	cmds.register("agg", handlerAgg)
 	cmds.register("addfeed", handlerAddFeed)
+	cmds.register("feeds", handlerFeeds)
 
 	args := os.Args
 	if len(args) < 2 {

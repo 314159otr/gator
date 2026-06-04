@@ -21,6 +21,18 @@ type commands struct {
 	cmds map[string]func(*state, command) error
 }
 
+func (c * commands) run(s *state, cmd command) error {
+	f, ok := c.cmds[cmd.name]
+	if !ok {
+		return errors.New("command not found")
+	}
+	return f(s, cmd)
+}
+
+func (c * commands) register(name string, f func(*state, command) error) {
+	c.cmds[name] = f
+}
+
 func handlerLogin(s *state, cmd command) error {
 	if len(cmd.args) == 0 {
 		return errors.New("username is required")
@@ -138,13 +150,37 @@ func handlerAddFeed(s *state, cmd command) error {
 	return nil
 }
 
+func handlerFeeds(s *state, cmd command) error {
+	ctx := context.Background()
+	feeds, err := s.db.GetFeeds(ctx)
+	if err != nil {
+		return fmt.Errorf("couldnt get feeds. Error: %w", err)
+	}
+	fmt.Println("all feeds:")
+	for _, feed := range feeds {
+		user, err := s.db.GetUserById(ctx, feed.UserID)
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("user id: \"%s\" doesnt exist", feed.UserID)
+		}
+		if err != nil {
+			return fmt.Errorf("error getting the user: %w", err)
+		}
+		fmt.Println("===========")
+		printFeed(feed)
+		fmt.Println("User:")
+		printUser(user)
+		fmt.Println("===========")
+	}
+	return nil
+}
 func printUser(user database.User) {
 	fmt.Printf("ID:        %v\n", user.ID)
 	fmt.Printf("Name:      %v\n", user.Name)
 	fmt.Printf("CreatedAt: %v\n", user.CreatedAt)
 	fmt.Printf("UpdatedAt: %v\n", user.UpdatedAt)
 }
-func printFeed(feed database.Feed) {
+
+func printFeed(feed database.Feed, ) {
 	fmt.Printf("ID:        %v\n", feed.ID)
 	fmt.Printf("UserID:    %v\n", feed.UserID)
 	fmt.Printf("Name:      %v\n", feed.Name)
@@ -153,14 +189,4 @@ func printFeed(feed database.Feed) {
 	fmt.Printf("UpdatedAt: %v\n", feed.UpdatedAt)
 }
 
-func (c * commands) run(s *state, cmd command) error {
-	f, ok := c.cmds[cmd.name]
-	if !ok {
-		return errors.New("command not found")
-	}
-	return f(s, cmd)
-}
 
-func (c * commands) register(name string, f func(*state, command) error) {
-	c.cmds[name] = f
-}
